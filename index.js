@@ -45,14 +45,13 @@ function log(message) {
 
 // ============ NOVO: Salvar interação entre membros ============
 async function saveInteraction(serverId, sourceId, targetId, interactionType, channelId) {
-  // Ignorar auto-interações
   if (sourceId === targetId) return;
 
   const today = getToday();
 
   try {
     // Verificar se já existe interação hoje
-    const { data: existing } = await supabase
+    const { data: existing, error: selectError } = await supabase
       .from('member_interactions')
       .select('id, count')
       .eq('server_id', serverId)
@@ -63,15 +62,24 @@ async function saveInteraction(serverId, sourceId, targetId, interactionType, ch
       .eq('interaction_date', today)
       .single();
 
+    if (selectError && selectError.code !== 'PGRST116') {
+      console.error(`❌ SELECT erro:`, selectError);
+      return;
+    }
+
     if (existing) {
-      // Incrementar contador
-      await supabase
+      const { error: updateError } = await supabase
         .from('member_interactions')
         .update({ count: existing.count + 1 })
         .eq('id', existing.id);
+      
+      if (updateError) {
+        console.error(`❌ UPDATE erro:`, updateError);
+      } else {
+        log(`   ✅ Interação atualizada: ${sourceId} -> ${targetId}`);
+      }
     } else {
-      // Criar nova interação
-      await supabase
+      const { error: insertError } = await supabase
         .from('member_interactions')
         .insert({
           server_id: serverId,
@@ -82,12 +90,17 @@ async function saveInteraction(serverId, sourceId, targetId, interactionType, ch
           interaction_date: today,
           count: 1
         });
+
+      if (insertError) {
+        console.error(`❌ INSERT erro:`, insertError);
+      } else {
+        log(`   ✅ Interação criada: ${sourceId} -> ${targetId}`);
+      }
     }
   } catch (error) {
-    console.error(`Erro ao salvar interação ${interactionType}:`, error.message);
+    console.error(`❌ Erro geral saveInteraction:`, error);
   }
 }
-
 // ============ EVENT HANDLERS ============
 
 // Bot ficou online
