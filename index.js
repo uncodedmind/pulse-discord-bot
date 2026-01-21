@@ -399,4 +399,3 @@ process.on('unhandledRejection', (error) => {
 log('🚀 Iniciando Pulse Analytics Bot...');
 log('📡 Network Analysis habilitado: mentions e replies serão rastreados');
 client.login(DISCORD_TOKEN);
-```
